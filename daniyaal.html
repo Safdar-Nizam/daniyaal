@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rebellion: Rise of the Interns - Shooting Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            background-color: #1a202c; 
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100vh;
+            background-color: #1a202c;
+            position: relative; 
+        }
+        canvas {
+            background-color: #2d3748;
+            border: 2px solid #4a5568;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+            border-radius: 0.5rem;
+            display: block; 
+        }
+        .character-label {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        .action-button {
+            background-color: #38a169; 
+            color: white;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 0 10px rgba(56, 161, 105, 0.5);
+        }
+        .action-button:hover {
+            background-color: #2f855a; 
+        }
+        .action-button:active {
+            transform: scale(0.95);
+        }
+        .action-button:disabled {
+            background-color: #4a5568;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .message-box { 
+            margin-top: 1rem;
+            padding: 0.5rem 1rem; 
+            background-color: rgba(45, 55, 72, 0.8); 
+            color: #a0aec0; 
+            border-radius: 0.375rem;
+            min-height: 3.5rem; 
+            text-align: center;
+            font-style: italic;
+            width: 100%;
+            max-width: calc(100% - 2rem); 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+        }
+        .boss-hp-container {
+            width: 150px;
+            height: 20px;
+            background-color: #718096; 
+            border: 1px solid #4a5568; 
+            border-radius: 0.25rem;
+            margin-top: 0.5rem;
+            overflow: hidden;
+            position: relative; 
+        }
+        .boss-hp-bar {
+            width: 100%; 
+            height: 100%;
+            background-color: #e53e3e; 
+            transition: width 0.2s ease-out;
+            display: flex; 
+            align-items: center;
+            justify-content: center;
+        }
+        .hp-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem; 
+            color: white;
+            font-weight: bold;
+            text-shadow: 0 0 2px black; 
+            line-height: 20px; 
+        }
+        .boss-name {
+            color: #cbd5e0;
+            font-size: 0.875rem;
+        }
+        .controls-info {
+            color: #a0aec0;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+        
+        /* Styles for the full-screen game over image overlay */
+        #gameOverImageOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #1a202c; 
+            display: flex;
+            flex-direction: column; /* Allow stacking of icon and text */
+            justify-content: center;
+            align-items: center;
+            z-index: 100; 
+            cursor: pointer; 
+            padding: 20px; 
+            box-sizing: border-box; 
+        }
+        #gameOverImageOverlay img {
+            max-width: 90%; 
+            max-height: 80%; /* Give a bit more room for the image */
+            object-fit: contain;
+            border-radius: 0.5rem; 
+        }
+        #gameOverImageOverlay .fallback-content-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+        }
+        #gameOverImageOverlay .fallback-content-wrapper svg {
+            width: 80px; 
+            height: 80px;
+            margin-bottom: 15px;
+            stroke: #a0aec0; 
+        }
+        #gameOverImageOverlay .fallback-text p {
+            margin: 0.3rem 0;
+            font-size: 0.9rem;
+        }
+        #gameOverImageOverlay .fallback-text strong {
+            font-size: 1rem;
+        }
+        #gameOverImageOverlay .error-message {
+            color: #f87171; 
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+         #gameOverImageOverlay .click-to-restart {
+            margin-top: 15px;
+            font-size: 0.8rem;
+            color: #63b3ed; 
+        }
+
+    </style>
+</head>
+<body class="flex items-center justify-center h-screen m-0">
+
+    <div class="game-container p-4 w-full max-w-3xl">
+        <h1 id="gameTitle" class="text-3xl font-bold text-red-500 mb-2 text-center" style="text-shadow: 0 0 10px #ef4444;">Rebellion: Rise of the Interns</h1>
+        <p id="gameSubtitle" class="text-sm text-gray-400 mb-4 text-center">Mini-Game: Daniyaal vs. Jay (Moving Boss)</p>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="uiControlsContainer" class="flex flex-col sm:flex-row justify-around w-full mt-4 items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-4">
+            <div class="text-center">
+                <p class="character-label">Daniyaal (The Rebel)</p>
+                <button id="startGameButton" class="action-button">Start Game!</button>
+                <p class="controls-info">Use ← → to Move, Space to Shoot</p>
+            </div>
+
+            <div class="text-center">
+                <p class="character-label">Jay (Deadline Demon)</p>
+                <p class="boss-name mt-1">HP:</p>
+                <div class="boss-hp-container mx-auto">
+                    <div id="bossHpBar" class="boss-hp-bar"></div>
+                    <span id="hpPercentageText" class="hp-text">100%</span> 
+                </div>
+                 <p id="jayStatus" class="text-xs text-amber-400 mt-1 h-4"></p>
+            </div>
+        </div>
+        <div id="messageBox" class="message-box">Press "Start Game" to begin!</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startGameButton = document.getElementById('startGameButton');
+        const messageBox = document.getElementById('messageBox'); 
+        const bossHpBar = document.getElementById('bossHpBar');
+        const hpPercentageText = document.getElementById('hpPercentageText'); 
+        const jayStatusText = document.getElementById('jayStatus');
+        const gameContainer = document.querySelector('.game-container'); // Needed for appending overlay
+        const uiControlsContainer = document.getElementById('uiControlsContainer');
+        const gameTitle = document.getElementById('gameTitle');
+        const gameSubtitle = document.getElementById('gameSubtitle');
+
+
+        let gameRunning = false;
+        let animationFrameId;
+
+        const daniyaal = {
+            x: 0, y: 0, bodyWidth: 28, bodyHeight: 36, headRadius: 10, 
+            totalHeight: 0, color: '#c53030', speed: 5, projectiles: [],
+            shootCooldown: 0, shootCooldownMax: 15 
+        };
+        daniyaal.totalHeight = daniyaal.bodyHeight + daniyaal.headRadius;
+
+        const jay = {
+            x: 0, y: 0, bodyWidth: 100, bodyHeight: 40, headRadius: 15,  
+            totalHeight: 0, color: '#4a5568', originalColor: '#4a5568',
+            hp: 150, maxHp: 150, hitTimer: 0, speedX: 5, directionX: 1   
+        };
+        jay.totalHeight = jay.bodyHeight + jay.headRadius;
+
+        const projectileProps = { width: 8, height: 15, speed: 7, color: '#fbd38d' };
+        const keys = { ArrowLeft: false, ArrowRight: false, " ": false };
+
+        function initGame() {
+            const existingOverlay = document.getElementById('gameOverImageOverlay');
+            if (existingOverlay) existingOverlay.remove();
+
+            canvas.style.display = 'block';
+            uiControlsContainer.style.display = 'flex'; 
+            messageBox.style.display = 'flex'; 
+            gameTitle.style.display = 'block';
+            gameSubtitle.style.display = 'block';
+
+            jay.hp = jay.maxHp;
+            jay.color = jay.originalColor;
+            jay.directionX = Math.random() < 0.5 ? 1 : -1; 
+            daniyaal.projectiles = [];
+            daniyaal.shootCooldown = 0;
+            
+            resizeCanvas(); 
+            updateBossHpBar(); 
+            messageBox.innerHTML = "Defeat Jay!"; 
+            jayStatusText.textContent = "";
+            gameRunning = true; 
+            startGameButton.disabled = false; 
+            // startGameButton.textContent = "Game Running..."; // Set by click listener
+
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            gameLoop();
+        }
+
+        startGameButton.addEventListener('click', () => {
+            if (!gameRunning) {
+                initGame(); 
+                startGameButton.disabled = true; 
+                startGameButton.textContent = "Game Running...";
+            }
+        });
+
+        function drawCharacter(character) {
+            const headX = character.x + character.bodyWidth / 2;
+            const headY = (character === jay) ? character.y + character.bodyHeight / 2 : character.y + character.headRadius;     
+            const bodyY = (character === jay) ? character.y : character.y + character.headRadius * 1.5; 
+
+            ctx.fillStyle = character.color;
+            if (character === jay) ctx.fillRect(character.x, character.y, character.bodyWidth, character.bodyHeight);
+            ctx.beginPath();
+            ctx.arc(headX, headY, character.headRadius, 0, Math.PI * 2);
+            ctx.fill();
+            if (character !== jay) ctx.fillRect(character.x, bodyY, character.bodyWidth, character.bodyHeight);
+            if (character.name === "Jay" && character.hitTimer > 0) {
+                character.hitTimer--;
+                if (character.hitTimer === 0) character.color = character.originalColor;
+            }
+        }
+
+        function drawProjectiles() {
+            daniyaal.projectiles.forEach(p => {
+                ctx.fillStyle = projectileProps.color;
+                ctx.fillRect(p.x, p.y, p.width, p.height);
+            });
+        }
+
+        function drawGame() {
+            ctx.fillStyle = '#2d3748';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            for(let i=0; i < 3; i++) { 
+                ctx.fillStyle = `rgba(74, 85, 104, ${Math.random() * 0.3 + 0.1})`;
+                ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 40 + 15, Math.random() * 40 + 15);
+            }
+            drawCharacter(daniyaal);
+            drawCharacter(jay);
+            drawProjectiles();
+        }
+
+        function updatePlayer() {
+            if (keys.ArrowLeft && daniyaal.x > 0) daniyaal.x -= daniyaal.speed;
+            if (keys.ArrowRight && daniyaal.x + daniyaal.bodyWidth < canvas.width) daniyaal.x += daniyaal.speed;
+            if (daniyaal.shootCooldown > 0) daniyaal.shootCooldown--;
+            if (keys[" "] && daniyaal.shootCooldown === 0) { 
+                daniyaal.projectiles.push({
+                    x: daniyaal.x + daniyaal.bodyWidth / 2 - projectileProps.width / 2,
+                    y: daniyaal.y, width: projectileProps.width, height: projectileProps.height
+                });
+                daniyaal.shootCooldown = daniyaal.shootCooldownMax;
+            }
+        }
+
+        function updateBoss() {
+            jay.x += jay.speedX * jay.directionX;
+            if (jay.x <= 0) { jay.x = 0; jay.directionX = 1; } 
+            else if (jay.x + jay.bodyWidth >= canvas.width) { jay.x = canvas.width - jay.bodyWidth; jay.directionX = -1; }
+            if (Math.random() < 0.005) jay.directionX *= -1;
+        }
+
+        function updateProjectiles() {
+            for (let i = daniyaal.projectiles.length - 1; i >= 0; i--) {
+                const p = daniyaal.projectiles[i];
+                p.y -= projectileProps.speed; 
+                const jayHitbox = { x: jay.x, y: jay.y, width: jay.bodyWidth, height: jay.bodyHeight };
+                if (p.x < jayHitbox.x + jayHitbox.width && p.x + p.width > jayHitbox.x &&
+                    p.y < jayHitbox.y + jayHitbox.height && p.y + p.height > jayHitbox.y) {         
+                    jay.hp -= 10; 
+                    if (jay.hp < 0) jay.hp = 0;
+                    updateBossHpBar();
+                    jay.color = '#ff0000'; jay.hitTimer = 5; 
+                    daniyaal.projectiles.splice(i, 1); 
+                    jayStatusText.textContent = "Jay got hit!";
+                    setTimeout(() => { if(gameRunning) jayStatusText.textContent = "";}, 1000);
+                    if (jay.hp === 0) { gameOver(true); return; }
+                    break; 
+                }
+                if (p.y + p.height < 0) daniyaal.projectiles.splice(i, 1);
+            }
+        }
+        
+        function updateBossHpBar() {
+            const percentage = Math.round((jay.hp / jay.maxHp) * 100);
+            bossHpBar.style.width = `${percentage}%`;
+            hpPercentageText.textContent = `${percentage}%`; 
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+            updatePlayer(); updateBoss(); updateProjectiles(); drawGame();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function displayFallbackContent(overlayElement) {
+            overlayElement.innerHTML = `
+                <div class='fallback-content-wrapper'>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <line x1="10" y1="9" x2="8" y2="9"></line>
+                    </svg>
+                    <div class='fallback-text'>
+                        <p class='error-message'>Error: Job Application image from Google Drive could not be loaded.</p>
+                        <p>Please ensure the link is public and correctly formatted for direct embedding.</p><br>
+                        <p><strong>Jay is DEFEATED!</strong></p>
+                        <p>A wild 'Job Application Form' appears (conceptually)!</p>
+                        <p>Skills: Micromanagement (Obsolete).</p>
+                        <p>Availability: Immediately (Unemployed).</p>
+                        <p class='click-to-restart'>Click anywhere to Play Again.</p>
+                    </div>
+                </div>`;
+        }
+
+        function gameOver(playerWon) {
+            gameRunning = false;
+            cancelAnimationFrame(animationFrameId);
+            
+            canvas.style.display = 'none';
+            uiControlsContainer.style.display = 'none';
+            messageBox.style.display = 'none';
+            gameTitle.style.display = 'none';
+            gameSubtitle.style.display = 'none';
+
+            if (playerWon) {
+                const overlay = document.createElement('div');
+                overlay.id = 'gameOverImageOverlay';
+
+                const img = document.createElement('img');
+                img.src = 'https://drive.google.com/uc?export=view&id=15FejqRn8_oxMJMuqdadVKg0J2R1b0vAf'; 
+                img.alt = 'Job Application Form - Jay is Defeated!';
+                
+                img.onload = function() { 
+                    overlay.innerHTML = ''; 
+                    overlay.appendChild(img);
+                };
+                img.onerror = function() { 
+                    displayFallbackContent(overlay);
+                };
+                
+                // Append the image initially. If it fails, onerror will replace the content.
+                // If it loads, onload will ensure it's the primary content.
+                overlay.appendChild(img); 
+                gameContainer.appendChild(overlay);
+
+                overlay.addEventListener('click', function() {
+                    initGame(); 
+                }, { once: true }); 
+
+            } else {
+                // This section is for if the player loses, which isn't implemented yet.
+                // For now, we'll just re-enable the start button and show a generic game over.
+                uiControlsContainer.style.display = 'flex'; 
+                messageBox.style.display = 'flex'; 
+                messageBox.innerHTML = "Game Over!"; 
+                startGameButton.disabled = false;
+                startGameButton.textContent = "Play Again?";
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (keys.hasOwnProperty(e.key)) {
+                keys[e.key] = true;
+                if (gameRunning && (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === " ")) { 
+                    e.preventDefault(); 
+                }
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            if (keys.hasOwnProperty(e.key)) {
+                keys[e.key] = false;
+            }
+        });
+
+        function resizeCanvas() {
+            const container = document.querySelector('.game-container');
+            let newWidth = Math.min(container.clientWidth * 0.95, 600); 
+            let newHeight = newWidth * (3/4); 
+            if (newHeight > container.clientHeight * 0.65) { 
+                newHeight = container.clientHeight * 0.65;
+                newWidth = newHeight * (4/3);
+            }
+            canvas.width = newWidth; canvas.height = newHeight;
+            const bottomPadding = canvas.height * 0.05; 
+            const topPadding = canvas.height * 0.05; 
+            daniyaal.y = canvas.height - daniyaal.totalHeight - bottomPadding;
+            if (!gameRunning) daniyaal.x = canvas.width / 2 - daniyaal.bodyWidth / 2;
+            else { 
+                if (daniyaal.x + daniyaal.bodyWidth > canvas.width) daniyaal.x = canvas.width - daniyaal.bodyWidth;
+                if (daniyaal.x < 0) daniyaal.x = 0;
+            }
+            jay.y = topPadding; 
+            if (!gameRunning) jay.x = canvas.width / 2 - jay.bodyWidth / 2;
+            else { 
+                if (jay.x + jay.bodyWidth > canvas.width) jay.x = canvas.width - jay.bodyWidth;
+                if (jay.x < 0) jay.x = 0;
+            }
+            if (gameRunning || !document.getElementById('gameOverImageOverlay')) drawGame();
+        }
+        
+        window.addEventListener('resize', () => { resizeCanvas(); });
+        
+        jay.name = "Jay"; 
+        resizeCanvas(); updateBossHpBar(); 
+        messageBox.innerHTML = "Press 'Start Game' to begin!";
+
+    </script>
+</body>
+</html>
